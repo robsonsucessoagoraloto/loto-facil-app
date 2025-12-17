@@ -40,9 +40,33 @@ elif opcao == "Importar Resultados":
         st.success("Arquivo importado com sucesso!")
         st.dataframe(df)
 
+        # --- ANÁLISE DE FREQUÊNCIA ---
+        st.subheader("📊 Análise de Frequência das Dezenas")
 
+        # Seleciona apenas colunas que começam com 'dezena'
+        colunas_dezenas = [col for col in df.columns if col.startswith("dezena")]
+
+        # Junta todas as dezenas em uma única lista
+        todas_dezenas = df[colunas_dezenas].values.flatten()
+
+        # Calcula frequência
+        frequencia = (
+            pd.Series(todas_dezenas)
+            .value_counts()
+            .sort_index()
+        )
+
+        tabela_freq = frequencia.reset_index()
+        tabela_freq.columns = ["Dezena", "Frequência"]
+
+        # --- RESULTADOS ---
         st.subheader("🔥 Números mais frequentes")
-        st.dataframe(tabela_freq.sort_values("Frequência", ascending=False))
+        st.dataframe(
+            tabela_freq.sort_values("Frequência", ascending=False)
+        )
 
         st.subheader("❄️ Números menos frequentes")
-        st.dataframe(tabela_freq.sort_values("Frequência", ascending=True))
+        st.dataframe(
+            tabela_freq.sort_values("Frequência", ascending=True)
+        )
+
