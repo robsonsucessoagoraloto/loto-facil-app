@@ -34,6 +34,7 @@ elif opcao == "Importar Resultados":
     )
 
     if arquivo:
-        df = pd.read_csv(arquivo)
+        df = pd.read_csv(arquivo, sep=",", engine="python")
+
         st.success("Arquivo importado com sucesso!")
         st.dataframe(df)
