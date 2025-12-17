@@ -60,6 +60,5 @@ st.write(tabela_freq.sort_values("Frequência", ascending=False).head(5))
 st.subheader("❄️ Números menos frequentes")
 st.write(tabela_freq.sort_values("Frequência", ascending=True).head(5))
 
-
-        st.success("Arquivo importado com sucesso!")
-        st.dataframe(df)
+st.success("Arquivo importado com sucesso!")
+st.dataframe(df)
