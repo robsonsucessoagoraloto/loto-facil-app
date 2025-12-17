@@ -41,8 +41,6 @@ elif opcao == "Importar Resultados":
         st.dataframe(df)
 
 
-
-
         st.subheader("🔥 Números mais frequentes")
         st.dataframe(tabela_freq.sort_values("Frequência", ascending=False))
 
