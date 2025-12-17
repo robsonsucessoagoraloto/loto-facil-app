@@ -40,20 +40,7 @@ elif opcao == "Importar Resultados":
         st.success("Arquivo importado com sucesso!")
         st.dataframe(df)
 
-        st.subheader("📊 Análise de Frequência das Dezenas")
 
-        colunas_dezenas = [col for col in df.columns if col.startswith("dezena")]
-
-        todas_dezenas = df[colunas_dezenas].values.flatten()
-
-        frequencia = (
-            pd.Series(todas_dezenas)
-            .value_counts()
-            .sort_index()
-        )
-
-        tabela_freq = frequencia.reset_index()
-        tabela_freq.columns = ["Dezena", "Frequência"]
 
         st.dataframe(tabela_freq)
 
