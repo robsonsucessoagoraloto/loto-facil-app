@@ -16,7 +16,7 @@ st.caption("Probabilidade empírica • filtros inteligentes • decisão assist
 # ================= FUNÇÕES =================
 def extrair_dezenas(df):
     cols = df.columns[-15:]
-    return df[cols].values.tolist()
+    return df[cols].astype(int).values.tolist()
 
 def frequencia_absoluta(jogos):
     cont = Counter()
@@ -38,7 +38,10 @@ def gerar_jogos(base, qtd, soma_min, soma_max, pares_min, pares_max):
     tentativas = 0
 
     while len(jogos) < qtd and tentativas < qtd * 1000:
-jogo = sorted(int(n) for n in np.random.choice(base_numeros, 15, replace=False))
+        jogo = sorted(
+            int(n) for n in np.random.choice(base, 15, replace=False)
+        )
+
         soma = sum(jogo)
         pares = sum(1 for n in jogo if n % 2 == 0)
 
@@ -99,16 +102,16 @@ if arquivo:
 
     with col1:
         st.subheader("🔥 Números quentes")
-        st.write(quentes)
+        st.write(sorted(quentes))
 
     with col2:
         st.subheader("❄️ Números frios")
-        st.write(frios)
+        st.write(sorted(frios))
 
     st.subheader("📊 Ranking probabilístico")
     df_score = pd.DataFrame({
-        "Número": score.keys(),
-        "Score": score.values()
+        "Número": list(score.keys()),
+        "Score": list(score.values())
     }).sort_values("Score", ascending=False)
 
     st.dataframe(df_score)
