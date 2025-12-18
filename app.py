@@ -10,10 +10,10 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("🎯 Lotofácil – Inteligência Estatística (sem promessas)")
+st.title("🎯 Lotofácil – Inteligência Estatística")
 st.caption("Probabilidade empírica • filtros inteligentes • decisão assistida")
 
-# ================= FUNÇÕES =================
+# ================= FUNÇÕES BASE =================
 def extrair_dezenas(df):
     cols = df.columns[-15:]
     return df[cols].astype(int).values.tolist()
@@ -24,8 +24,8 @@ def frequencia_absoluta(jogos):
         cont.update(j)
     return cont
 
-def score_por_numero(freq_abs, total_concursos):
-    return {n: freq_abs.get(n, 0) / total_concursos for n in range(1, 26)}
+def score_por_numero(freq_abs, total):
+    return {n: freq_abs.get(n, 0) / total for n in range(1, 26)}
 
 def classificar_quentes_frios(score, n_quentes, n_frios):
     ranking = sorted(score.items(), key=lambda x: x[1], reverse=True)
@@ -33,15 +33,13 @@ def classificar_quentes_frios(score, n_quentes, n_frios):
     frios = [n for n, _ in ranking[-n_frios:]]
     return quentes, frios
 
+# ================= GERAÇÃO =================
 def gerar_jogos(base, qtd, soma_min, soma_max, pares_min, pares_max):
     jogos = []
     tentativas = 0
 
     while len(jogos) < qtd and tentativas < qtd * 1000:
-        jogo = sorted(
-            int(n) for n in np.random.choice(base, 15, replace=False)
-        )
-
+        jogo = sorted(int(n) for n in np.random.choice(base, 15, replace=False))
         soma = sum(jogo)
         pares = sum(1 for n in jogo if n % 2 == 0)
 
@@ -52,23 +50,36 @@ def gerar_jogos(base, qtd, soma_min, soma_max, pares_min, pares_max):
 
     return jogos
 
-def testar_historico(jogos, historico):
-    resumo = []
-    for i, jogo in enumerate(jogos, 1):
-        acertos = [len(set(jogo) & set(s)) for s in historico]
-        resumo.append({
-            "Jogo": i,
-            "Média de acertos": round(np.mean(acertos), 2),
-            "Máx": max(acertos),
-            "Min": min(acertos)
-        })
-    return pd.DataFrame(resumo)
+# ================= TESTE HISTÓRICO =================
+def testar_historico(jogo, historico):
+    return [len(set(jogo) & set(s)) for s in historico]
+
+# ================= SCORE DO JOGO =================
+def score_jogo(jogo, historico, jogos_gerados):
+    acertos = testar_historico(jogo, historico)
+    media_acertos = np.mean(acertos)
+
+    soma = sum(jogo)
+    pares = sum(1 for n in jogo if n % 2 == 0)
+
+    # penalidade por redundância
+    similaridade = 0
+    for outro in jogos_gerados:
+        if outro != jogo:
+            similaridade += len(set(jogo) & set(outro))
+
+    score_final = (
+        media_acertos * 10
+        - abs(7 - pares)
+        - similaridade * 0.02
+    )
+
+    return round(score_final, 2), round(media_acertos, 2)
 
 # ================= SIDEBAR =================
 st.sidebar.header("⚙️ Configurações")
 
 qtd_jogos = st.sidebar.slider("Quantidade de jogos", 1, 50, 10)
-janela = st.sidebar.slider("Janela histórica (concursos)", 10, 100, 30)
 
 soma_min = st.sidebar.slider("Soma mínima", 150, 300, 190)
 soma_max = st.sidebar.slider("Soma máxima", 150, 300, 240)
@@ -76,8 +87,8 @@ soma_max = st.sidebar.slider("Soma máxima", 150, 300, 240)
 pares_min = st.sidebar.slider("Pares mínimos", 4, 10, 6)
 pares_max = st.sidebar.slider("Pares máximos", 4, 10, 9)
 
-qtd_quentes = st.sidebar.slider("Qtd números quentes", 4, 10, 6)
-qtd_frios = st.sidebar.slider("Qtd números frios", 4, 10, 6)
+qtd_quentes = st.sidebar.slider("Qtd números quentes", 4, 12, 6)
+qtd_frios = st.sidebar.slider("Qtd números frios", 4, 12, 6)
 
 # ================= UPLOAD =================
 st.subheader("📥 Importar resultados oficiais")
@@ -85,16 +96,19 @@ arquivo = st.file_uploader("Envie o CSV da Lotofácil", type=["csv"])
 
 if arquivo:
     df = pd.read_csv(arquivo)
-    jogos = extrair_dezenas(df)
+    jogos_historicos = extrair_dezenas(df)
 
-    st.success(f"{len(jogos)} concursos carregados")
+    st.success(f"{len(jogos_historicos)} concursos carregados")
     st.dataframe(df.head())
 
     # ================= ANÁLISE =================
-    freq = frequencia_absoluta(jogos)
-    score = score_por_numero(freq, len(jogos))
+    freq = frequencia_absoluta(jogos_historicos)
+    score_numeros = score_por_numero(freq, len(jogos_historicos))
 
-    quentes, frios = classificar_quentes_frios(score, qtd_quentes, qtd_frios)
+    quentes, frios = classificar_quentes_frios(
+        score_numeros, qtd_quentes, qtd_frios
+    )
+
     base = sorted(set(quentes + frios))
 
     st.divider()
@@ -102,16 +116,17 @@ if arquivo:
 
     with col1:
         st.subheader("🔥 Números quentes")
-        st.write(sorted(quentes))
+        st.write(quentes)
 
     with col2:
         st.subheader("❄️ Números frios")
-        st.write(sorted(frios))
+        st.write(frios)
 
-    st.subheader("📊 Ranking probabilístico")
+    # ================= RANKING NÚMEROS =================
+    st.subheader("📊 Ranking probabilístico dos números")
     df_score = pd.DataFrame({
-        "Número": list(score.keys()),
-        "Score": list(score.values())
+        "Número": score_numeros.keys(),
+        "Score": score_numeros.values()
     }).sort_values("Score", ascending=False)
 
     st.dataframe(df_score)
@@ -121,10 +136,7 @@ if arquivo:
     st.subheader("🎯 Geração estratégica de jogos")
 
     if len(base) < 15:
-        st.error(
-            f"Base insuficiente ({len(base)} números). "
-            "Aumente quentes/frios até no mínimo 15."
-        )
+        st.error("Base insuficiente. Aumente quentes/frios.")
     else:
         jogos_gerados = gerar_jogos(
             base,
@@ -136,17 +148,30 @@ if arquivo:
         )
 
         if jogos_gerados:
-            st.success(f"{len(jogos_gerados)} jogos gerados")
-            for i, j in enumerate(jogos_gerados, 1):
-                st.write(f"Jogo {i}: {j}")
+            resultados = []
+
+            for jogo in jogos_gerados:
+                score_final, media = score_jogo(
+                    jogo, jogos_historicos, jogos_gerados
+                )
+                resultados.append({
+                    "Jogo": jogo,
+                    "Score do jogo": score_final,
+                    "Média histórica de acertos": media
+                })
+
+            df_resultados = pd.DataFrame(resultados)
+            df_resultados = df_resultados.sort_values(
+                "Score do jogo", ascending=False
+            )
+
+            st.success("Jogos ranqueados por qualidade estatística")
+            st.dataframe(df_resultados)
+
         else:
             st.warning("Nenhum jogo válido com esses filtros.")
 
-        # ================= TESTE HISTÓRICO =================
-        st.divider()
-        st.subheader("🧪 Teste histórico automático")
-
-        df_teste = testar_historico(jogos_gerados, jogos)
-        st.dataframe(df_teste)
-
-        st.caption("⚠️ Estatística aplicada. Sem promessas. Decisão assistida.")
+    st.caption(
+        "⚠️ Estatística aplicada. Sem promessas. "
+        "IA probabilística e decisão assistida."
+    )
