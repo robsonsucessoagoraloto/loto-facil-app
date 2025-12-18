@@ -38,7 +38,7 @@ def gerar_jogos(base, qtd, soma_min, soma_max, pares_min, pares_max):
     tentativas = 0
 
     while len(jogos) < qtd and tentativas < qtd * 1000:
-        jogo = sorted(np.random.choice(base, 15, replace=False))
+jogo = sorted(int(n) for n in np.random.choice(base_numeros, 15, replace=False))
         soma = sum(jogo)
         pares = sum(1 for n in jogo if n % 2 == 0)
 
