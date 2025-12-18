@@ -21,7 +21,7 @@ def extrair_dezenas(df):
 def frequencia_absoluta(jogos):
     cont = Counter()
     for j in jogos:
-        cont.update(j Leads?)
+        cont.update(j)
     return cont
 
 def score_por_numero(freq_abs, total_concursos):
