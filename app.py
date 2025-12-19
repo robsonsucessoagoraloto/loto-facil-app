@@ -31,7 +31,8 @@ def carregar_base_online():
         df = pd.read_csv(URL_BASE_ONLINE)
         df.columns = [c.lower() for c in df.columns]
         return df
-    except Exception:
+    except Exception as e:
+        st.error(f"Erro ao carregar base online: {e}")
         return None
 
 # ======================================================
