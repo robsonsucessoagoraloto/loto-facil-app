@@ -551,3 +551,116 @@ if bolao:
         file_name="bolao_otimizado_lotofacil.csv",
         mime="text/csv"
     )
+# ======================================================
+# 🧠 COMPARAÇÃO DE MÚLTIPLOS BOLÕES (ATÉ 20)
+# ======================================================
+st.divider()
+st.header("🧠 Comparação Inteligente de Bolões")
+
+st.markdown(
+    "Informe até **20 bolões**, um por linha. "
+    "Cada linha deve conter **16 a 20 números**, separados por vírgula."
+)
+
+boloes_texto = st.text_area(
+    "Bolões (um por linha)",
+    height=200,
+    placeholder="Ex:\n1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16\n1,3,5,7,9,11,13,15,17,19,2,4,6,8,10,12"
+)
+
+janela_backtest = st.slider(
+    "Janela histórica para backtest",
+    50, min(1000, len(jogos)), 300
+)
+
+def parse_varios_boloes(texto):
+    boloes = []
+    for linha in texto.splitlines():
+        try:
+            nums = sorted(set(int(n) for n in linha.split(",") if n.strip().isdigit()))
+            if 16 <= len(nums) <= 20 and all(1 <= n <= 25 for n in nums):
+                boloes.append(nums)
+        except Exception:
+            pass
+    return boloes[:20]
+
+boloes = parse_varios_boloes(boloes_texto)
+
+# ======================================================
+# 🧪 BACKTEST POR BOLÃO (ESTRATÉGIA)
+# ======================================================
+if boloes:
+    st.success(f"{len(boloes)} bolões válidos carregados")
+
+    historico_bt = jogos[-janela_backtest:]
+    resultados_boloes = []
+
+    for idx, bolao in enumerate(boloes, 1):
+        combinacoes = list(itertools.combinations(bolao, 15))
+
+        medias = []
+        maximos = []
+        dist = Counter()
+
+        for jogo in combinacoes:
+            acertos = [len(set(jogo) & set(s)) for s in historico_bt]
+            medias.append(np.mean(acertos))
+            maximos.append(max(acertos))
+            dist.update(acertos)
+
+        score_ia = (
+            np.mean(medias) * 2 +
+            np.mean(maximos) +
+            dist.get(13, 0) * 0.5 +
+            dist.get(14, 0) * 1 +
+            dist.get(15, 0) * 2
+        )
+
+        resultados_boloes.append({
+            "Bolão": f"Bolão {idx}",
+            "Qtd dezenas": len(bolao),
+            "Média acertos": round(np.mean(medias), 2),
+            "Máx histórico": max(maximos),
+            "Freq 13+": dist.get(13, 0) + dist.get(14, 0) + dist.get(15, 0),
+            "Score IA": round(score_ia, 2)
+        })
+
+    df_boloes = pd.DataFrame(resultados_boloes).sort_values(
+        "Score IA", ascending=False
+    )
+
+    st.subheader("📊 Ranking dos Bolões (IA Estatística)")
+    st.dataframe(df_boloes)
+
+    # ======================================================
+    # 🤖 DIAGNÓSTICO TEXTUAL INTELIGENTE
+    # ======================================================
+    melhor = df_boloes.iloc[0]
+
+    st.subheader("🤖 Diagnóstico Inteligente")
+    st.markdown(
+        f"""
+        **Bolão recomendado:** **{melhor['Bolão']}**
+
+        **Motivos estatísticos:**
+        - Maior score combinado (IA): **{melhor['Score IA']}**
+        - Melhor equilíbrio entre média e máximo histórico
+        - Maior presença de acertos altos (13+)
+        - Estrutura mais eficiente dentro da janela analisada
+
+        ⚠️ *Probabilidade aplicada. Não há garantia de repetição de resultados.*
+        """
+    )
+
+    # Exportação
+    csv_comp = df_boloes.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        "⬇️ Baixar ranking dos bolões (CSV)",
+        data=csv_comp,
+        file_name="ranking_boloes_lotofacil.csv",
+        mime="text/csv"
+    )
+
+else:
+    if boloes_texto.strip():
+        st.error("Nenhum bolão válido identificado. Verifique o formato.")
