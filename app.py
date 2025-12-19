@@ -2,10 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from collections import Counter
-from io import StringIO
 
 # ======================================================
-# CONFIGURAÇÃO
+# CONFIGURAÇÃO DA PÁGINA
 # ======================================================
 st.set_page_config(
     page_title="Lotofácil – Inteligência Estatística",
@@ -14,22 +13,16 @@ st.set_page_config(
 )
 
 st.title("🎯 Lotofácil – Inteligência Estatística")
-st.caption("Probabilidade empírica • filtros • simulação • decisão assistida")
-
-st.info(
-    "⚠️ Este sistema NÃO promete prêmios.\n"
-    "Ele elimina jogos ruins, aplica estatística real e "
-    "auxilia decisões com base em dados históricos."
-)
+st.caption("Probabilidade empírica • filtros inteligentes • decisão assistida")
 
 # ======================================================
-# BASE ONLINE
+# BASE ONLINE (CSV AUTOMÁTICO)
 # ======================================================
-URL_BASE_ONLINE = (
-URL_BASE_ONLINE = (
-    "https://raw.githubusercontent.com/robsonsucessoagora/loto-facil-app/main/lotofacil_resultados.csv"
-)
-)
+# 🔴 ESTA É A LINHA MAIS IMPORTANTE DO ARQUIVO
+# 🔴 MUDE APENAS O USUÁRIO / REPO SE NECESSÁRIO
+
+URL_BASE_ONLINE = "https://raw.githubusercontent.com/robsonsucessoagora/aplicativo-loto-facil/main/lotofacil_resultados.csv"
+# ------------------- AQUI VOCÊ MUDA SE PRECISAR -------------------
 
 @st.cache_data(show_spinner=False)
 def carregar_base_online():
@@ -47,54 +40,45 @@ def extrair_dezenas(df):
     cols = df.columns[-15:]
     return df[cols].astype(int).values.tolist()
 
-def frequencia(jogos):
-    c = Counter()
+def frequencia_absoluta(jogos):
+    cont = Counter()
     for j in jogos:
-        c.update(j)
-    return c
+        cont.update(j)
+    return cont
 
-def score_numeros(freq, total):
+def score_por_numero(freq, total):
     return {n: freq.get(n, 0) / total for n in range(1, 26)}
 
-def tendencia(jogos_curto, jogos_longo):
-    f1 = frequencia(jogos_curto)
-    f2 = frequencia(jogos_longo)
-    return {n: f1.get(n, 0) - f2.get(n, 0) for n in range(1, 26)}
+def classificar_quentes_frios(score, n_quentes, n_frios):
+    ranking = sorted(score.items(), key=lambda x: x[1], reverse=True)
+    quentes = [n for n, _ in ranking[:n_quentes]]
+    frios = [n for n, _ in ranking[-n_frios:]]
+    return quentes, frios
 
-def classificar(score, n_quentes, n_frios):
-    r = sorted(score.items(), key=lambda x: x[1], reverse=True)
-    return [n for n,_ in r[:n_quentes]], [n for n,_ in r[-n_frios:]]
-
-# ======================================================
-# GERAÇÃO DE JOGOS
-# ======================================================
 def gerar_jogos(base, qtd, soma_min, soma_max, pares_min, pares_max):
     jogos = []
     tentativas = 0
-    while len(jogos) < qtd and tentativas < qtd * 3000:
-        jogo = sorted(np.random.choice(base, 15, replace=False))
+
+    while len(jogos) < qtd and tentativas < qtd * 2000:
+        jogo = sorted(int(n) for n in np.random.choice(base, 15, replace=False))
         soma = sum(jogo)
         pares = sum(1 for n in jogo if n % 2 == 0)
+
         if soma_min <= soma <= soma_max and pares_min <= pares <= pares_max:
-            if list(jogo) not in jogos:
-                jogos.append(list(jogo))
+            if jogo not in jogos:
+                jogos.append(jogo)
+
         tentativas += 1
+
     return jogos
 
-# ======================================================
-# SCORE POR JOGO + SIMULAÇÃO
-# ======================================================
-def score_jogo(jogo, score_n):
-    return round(sum(score_n[n] for n in jogo), 4)
-
-def simular(jogos, historico):
+def testar_historico(jogos, historico):
     dados = []
     for i, jogo in enumerate(jogos, 1):
         acertos = [len(set(jogo) & set(s)) for s in historico]
         dados.append({
             "Jogo": i,
-            "Score jogo": score_jogo(jogo, score_num),
-            "Média acertos": round(np.mean(acertos), 2),
+            "Média de acertos": round(np.mean(acertos), 2),
             "Máx": max(acertos),
             "Min": min(acertos)
         })
@@ -105,8 +89,8 @@ def simular(jogos, historico):
 # ======================================================
 st.sidebar.header("⚙️ Configurações")
 
-qtd_jogos = st.sidebar.slider("Quantidade de jogos", 5, 50, 20)
-janela = st.sidebar.slider("Janela histórica", 100, 3000, 500)
+qtd_jogos = st.sidebar.slider("Quantidade de jogos", 1, 50, 20)
+janela = st.sidebar.slider("Janela histórica (concursos)", 50, 3000, 300)
 
 soma_min = st.sidebar.slider("Soma mínima", 150, 300, 190)
 soma_max = st.sidebar.slider("Soma máxima", 150, 300, 240)
@@ -114,8 +98,8 @@ soma_max = st.sidebar.slider("Soma máxima", 150, 300, 240)
 pares_min = st.sidebar.slider("Pares mínimos", 4, 10, 6)
 pares_max = st.sidebar.slider("Pares máximos", 4, 10, 9)
 
-qtd_quentes = st.sidebar.slider("Qtd quentes", 4, 15, 8)
-qtd_frios = st.sidebar.slider("Qtd frios", 4, 15, 7)
+qtd_quentes = st.sidebar.slider("Qtd números quentes", 4, 15, 8)
+qtd_frios = st.sidebar.slider("Qtd números frios", 4, 15, 7)
 
 # ======================================================
 # CARREGAMENTO DA BASE
@@ -124,76 +108,78 @@ st.subheader("📥 Base de resultados")
 
 df = carregar_base_online()
 
-if df is None:
-    st.warning("Base online indisponível. Envie CSV manual.")
-    arq = st.file_uploader("Upload CSV", type=["csv"])
-    if arq:
-        df = pd.read_csv(arq)
+if df is not None:
+    st.success(f"Base online carregada ({len(df)} concursos)")
+else:
+    st.warning("Base online indisponível. Envie um CSV manualmente.")
+    arquivo = st.file_uploader("Upload CSV", type=["csv"])
+    if arquivo:
+        df = pd.read_csv(arquivo)
 
 if df is None:
     st.stop()
 
-if len(df) < 100:
-    st.warning("Base pequena. Resultados podem distorcer.")
-
-st.success(f"{len(df)} concursos carregados")
 st.dataframe(df.tail())
 
 # ======================================================
 # ANÁLISE
 # ======================================================
 jogos = extrair_dezenas(df)
-freq = frequencia(jogos)
-score_num = score_numeros(freq, len(jogos))
+freq = frequencia_absoluta(jogos)
+score = score_por_numero(freq, len(jogos))
 
-jogos_curto = jogos[-janela:]
-tend = tendencia(jogos_curto, jogos)
+quentes, frios = classificar_quentes_frios(score, qtd_quentes, qtd_frios)
+base = sorted(set(quentes + frios))
 
-quentes, frios = classificar(score_num, qtd_quentes, qtd_frios)
+st.divider()
+col1, col2 = st.columns(2)
 
-st.subheader("🔥 Quentes / ❄️ Frios")
-st.write("Quentes:", quentes)
-st.write("Frios:", frios)
+with col1:
+    st.subheader("🔥 Números quentes")
+    st.write(quentes)
 
-# ======================================================
-# ESTRATÉGIAS
-# ======================================================
-estrategias = {
-    "A – Quentes": quentes + frios[:3],
-    "B – Balanceada": quentes[:5] + frios[:5],
-    "C – Frios": frios + quentes[:3]
-}
+with col2:
+    st.subheader("❄️ Números frios")
+    st.write(frios)
 
-resultados = []
-
-st.subheader("🧪 Comparador de estratégias")
-
-for nome, base in estrategias.items():
-    if len(base) < 15:
-        continue
-    jogos_gen = gerar_jogos(base, qtd_jogos, soma_min, soma_max, pares_min, pares_max)
-    df_sim = simular(jogos_gen, jogos_curto)
-    media = df_sim["Média acertos"].mean()
-    resultados.append({
-        "Estratégia": nome,
-        "Jogos gerados": len(jogos_gen),
-        "Média geral acertos": round(media, 2)
-    })
-    with st.expander(f"Detalhes – {nome}"):
-        st.dataframe(df_sim.sort_values("Score jogo", ascending=False))
-
-df_comp = pd.DataFrame(resultados)
-st.dataframe(df_comp)
+st.subheader("📊 Ranking probabilístico")
+df_score = pd.DataFrame({
+    "Número": list(score.keys()),
+    "Score": list(score.values())
+}).sort_values("Score", ascending=False)
+st.dataframe(df_score)
 
 # ======================================================
-# EXPORTAÇÃO
+# GERAÇÃO DE JOGOS
 # ======================================================
-st.subheader("📤 Exportação")
+st.divider()
+st.subheader("🎯 Geração estratégica")
 
-csv_out = df_comp.to_csv(index=False)
-st.download_button(
-    "Baixar relatório (CSV)",
-    csv_out,
-    file_name="comparacao_estrategias_lotofacil.csv",
-    mime="text/csv"
+if len(base) < 15:
+    st.error("Base insuficiente. Aumente quentes/frios.")
+    st.stop()
+
+jogos_gerados = gerar_jogos(
+    base,
+    qtd_jogos,
+    soma_min,
+    soma_max,
+    pares_min,
+    pares_max
 )
+
+st.success(f"{len(jogos_gerados)} jogos gerados")
+
+for i, j in enumerate(jogos_gerados, 1):
+    st.write(f"Jogo {i}: {j}")
+
+# ======================================================
+# SIMULAÇÃO HISTÓRICA
+# ======================================================
+st.divider()
+st.subheader("🧪 Simulação histórica")
+
+df_sim = testar_historico(jogos_gerados, jogos[-janela:])
+st.dataframe(df_sim)
+
+st.caption("⚠️ Estatística aplicada. Sem promessas. Decisão assistida.")
