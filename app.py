@@ -185,3 +185,84 @@ df_sim = testar_historico(jogos_gerados, jogos[-janela:])
 st.dataframe(df_sim)
 
 st.caption("⚠️ Estatística aplicada. Sem promessas. Decisão assistida.")
+# ======================================================
+# ANÁLISE DE BOLÃO (15 a 20 dezenas)
+# ======================================================
+st.divider()
+st.subheader("🎯 Análise de Bolão")
+
+st.write(
+    "Informe um bolão com **15 a 20 dezenas** (separadas por vírgula). "
+    "O sistema fará análise estatística e simulação histórica."
+)
+
+entrada_bolao = st.text_input(
+    "Exemplo: 1,3,5,6,7,9,10,11,12,13,14,15,17,18,20"
+)
+
+if entrada_bolao:
+    try:
+        bolao = sorted(
+            set(int(n.strip()) for n in entrada_bolao.split(",") if n.strip())
+        )
+
+        if not (15 <= len(bolao) <= 20):
+            st.error("⚠️ O bolão deve ter entre 15 e 20 dezenas.")
+        elif any(n < 1 or n > 25 for n in bolao):
+            st.error("⚠️ As dezenas devem estar entre 1 e 25.")
+        else:
+            st.success(f"Bolão válido com {len(bolao)} dezenas")
+
+            # Classificação quente / frio / neutro
+            bolao_quentes = [n for n in bolao if n in quentes]
+            bolao_frios = [n for n in bolao if n in frios]
+            bolao_neutros = [n for n in bolao if n not in quentes + frios]
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.subheader("🔥 Quentes no bolão")
+                st.write(bolao_quentes)
+
+            with col2:
+                st.subheader("❄️ Frios no bolão")
+                st.write(bolao_frios)
+
+            with col3:
+                st.subheader("⚖️ Neutros no bolão")
+                st.write(bolao_neutros)
+
+            # Score médio do bolão
+            score_medio = np.mean([score[n] for n in bolao])
+            st.metric("📊 Score médio do bolão", round(score_medio, 4))
+
+            # Simulação histórica
+            st.subheader("🧪 Simulação histórica do bolão")
+
+            resultados = []
+            for sorteio in jogos[-janela:]:
+                acertos = len(set(bolao) & set(sorteio))
+                resultados.append(acertos)
+
+            df_bolao = pd.DataFrame(resultados, columns=["Acertos"])
+            distribuicao = df_bolao["Acertos"].value_counts().sort_index()
+
+            st.write("Distribuição de acertos no histórico:")
+            st.dataframe(distribuicao.rename("Ocorrências"))
+
+            st.metric("Máximo de acertos", df_bolao["Acertos"].max())
+            st.metric("Média de acertos", round(df_bolao["Acertos"].mean(), 2))
+
+            # Comparação com jogos gerados
+            st.subheader("⚔️ Comparação: Bolão vs Jogos Gerados")
+
+            media_gerados = df_sim["Média de acertos"].mean()
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Bolão (média)", round(df_bolao["Acertos"].mean(), 2))
+            with col2:
+                st.metric("Jogos gerados (média)", round(media_gerados, 2))
+
+    except Exception as e:
+        st.error(f"Erro ao processar bolão: {e}")
