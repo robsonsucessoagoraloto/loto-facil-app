@@ -16,14 +16,20 @@ st.title("🎯 Lotofácil – Inteligência Estatística")
 st.caption("Probabilidade empírica • filtros inteligentes • decisão assistida")
 
 # ======================================================
-# BASE ONLINE (CSV AUTOMÁTICO)
+# BASE ONLINE (CSV AUTOMÁTICO – GITHUB RAW)
 # ======================================================
-# 🔴 ESTA É A LINHA MAIS IMPORTANTE DO ARQUIVO
-# 🔴 MUDE APENAS O USUÁRIO / REPO SE NECESSÁRIO
+# ✅ URL CORRETA
+# Repositório: robsonsucessoagoraloto/aplicativo-loto-facil
+# Arquivo: lotofacil_resultados.csv
+# Branch: main
 
-URL_BASE_ONLINE = "https://raw.githubusercontent.com/robsonsucessoagoraloto/aplicativoloto-facil/main/lotofacil_resultados.csv"
-
-# ------------------- AQUI VOCÊ MUDA SE PRECISAR -------------------
+URL_BASE_ONLINE = (
+    "https://raw.githubusercontent.com/"
+    "robsonsucessoagoraloto/"
+    "aplicativo-loto-facil/"
+    "main/"
+    "lotofacil_resultados.csv"
+)
 
 @st.cache_data(show_spinner=False)
 def carregar_base_online():
