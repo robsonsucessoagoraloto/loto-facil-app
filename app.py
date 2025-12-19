@@ -21,7 +21,7 @@ st.caption("Probabilidade empírica • filtros inteligentes • decisão assist
 # 🔴 ESTA É A LINHA MAIS IMPORTANTE DO ARQUIVO
 # 🔴 MUDE APENAS O USUÁRIO / REPO SE NECESSÁRIO
 
-URL_BASE_ONLINE = "https://raw.githubusercontent.com/robsonsucessoagora/aplicativo-loto-facil/main/lotofacil_resultados.csv"
+URL_BASE_ONLINE = "https://raw.githubusercontent.com/robsonsucessoagoraloto/loto-facil-app/main/lotofacil_resultados.csv"
 
 # ------------------- AQUI VOCÊ MUDA SE PRECISAR -------------------
 
