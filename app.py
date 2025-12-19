@@ -266,3 +266,123 @@ if entrada_bolao:
 
     except Exception as e:
         st.error(f"Erro ao processar bolão: {e}")
+# ======================================================
+# DIAGNÓSTICO TEXTUAL + ESTRATÉGIAS AVANÇADAS
+# ======================================================
+st.divider()
+st.header("🧠 Diagnóstico Estatístico Inteligente")
+
+def diagnostico_textual(jogo, quentes, frios, media_historica):
+    q_quentes = len(set(jogo) & set(quentes))
+    q_frios = len(set(jogo) & set(frios))
+
+    if q_quentes >= 7 and q_frios <= 3:
+        perfil = "Agressivo (muitos quentes)"
+    elif q_frios >= 6:
+        perfil = "Conservador (muitos frios)"
+    else:
+        perfil = "Equilibrado"
+
+    texto = (
+        f"O jogo possui {q_quentes} números quentes e {q_frios} frios.\n"
+        f"Perfil estatístico: {perfil}.\n"
+        f"Média histórica de acertos: {media_historica:.2f}.\n"
+        "Este diagnóstico é baseado apenas em dados históricos."
+    )
+    return texto
+
+# ======================================================
+# COMPARADOR DE ESTRATÉGIAS A vs B vs C
+# ======================================================
+st.divider()
+st.header("📊 Comparador de Estratégias")
+
+def gerar_base_estrategia(quentes, frios, tipo):
+    if tipo == "A":
+        return sorted(set(quentes + frios))
+    elif tipo == "B":
+        return sorted(quentes + list(set(range(1,26)) - set(quentes))[:15-len(quentes)])
+    elif tipo == "C":
+        return sorted(frios + list(set(range(1,26)) - set(frios))[:15-len(frios)])
+
+estrategias = {
+    "A (Equilibrada)": gerar_base_estrategia(quentes, frios, "A"),
+    "B (Quentes)": gerar_base_estrategia(quentes, frios, "B"),
+    "C (Frios)": gerar_base_estrategia(quentes, frios, "C")
+}
+
+resultado_estrategias = []
+
+for nome, base_est in estrategias.items():
+    if len(base_est) < 15:
+        continue
+
+    jogos_est = gerar_jogos(
+        base_est,
+        10,
+        soma_min,
+        soma_max,
+        pares_min,
+        pares_max
+    )
+
+    sim = testar_historico(jogos_est, jogos[-janela:])
+    media = sim["Média de acertos"].mean()
+
+    resultado_estrategias.append({
+        "Estratégia": nome,
+        "Média Histórica": round(media, 2)
+    })
+
+df_estrategias = pd.DataFrame(resultado_estrategias).sort_values(
+    "Média Histórica", ascending=False
+)
+
+st.dataframe(df_estrategias)
+
+# ======================================================
+# IA ASSISTIDA — DECISÃO BASEADA EM DADOS
+# ======================================================
+st.divider()
+st.header("🤖 Decisão Assistida (IA Estatística)")
+
+melhor = df_estrategias.iloc[0]
+
+st.success(
+    f"A estratégia com melhor desempenho histórico foi "
+    f"**{melhor['Estratégia']}**, "
+    f"com média de {melhor['Média Histórica']} acertos.\n\n"
+    "Essa decisão é baseada exclusivamente em simulação histórica."
+)
+
+# ======================================================
+# DIAGNÓSTICO DOS JOGOS GERADOS
+# ======================================================
+st.divider()
+st.header("📝 Diagnóstico dos Jogos Gerados")
+
+for i, jogo in enumerate(jogos_gerados, 1):
+    media_jogo = df_sim.loc[df_sim["Jogo"] == i, "Média de acertos"].values[0]
+    texto = diagnostico_textual(jogo, quentes, frios, media_jogo)
+
+    with st.expander(f"Jogo {i} – Diagnóstico"):
+        st.write(jogo)
+        st.write(texto)
+
+# ======================================================
+# EXPORTAÇÃO (VALOR COMERCIAL)
+# ======================================================
+st.divider()
+st.header("📥 Exportação de Diagnóstico")
+
+df_export = df_sim.copy()
+df_export["Estratégia Base"] = melhor["Estratégia"]
+
+csv = df_export.to_csv(index=False).encode("utf-8")
+
+st.download_button(
+    "⬇️ Baixar diagnóstico em CSV",
+    data=csv,
+    file_name="diagnostico_lotofacil.csv",
+    mime="text/csv"
+)
