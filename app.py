@@ -409,3 +409,145 @@ st.download_button(
     file_name="diagnostico_lotofacil.csv",
     mime="text/csv"
 )
+# ======================================================
+# 🧮 ANÁLISE DE BOLÕES (16–20 DEZENAS)
+# ======================================================
+import itertools
+
+st.divider()
+st.header("🧮 Análise de Bolão (16–20 dezenas)")
+
+bolao_input = st.text_input(
+    "Informe os números do bolão (ex: 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)",
+    ""
+)
+
+qtd_sim_bolao = st.slider(
+    "Quantidade de concursos para simulação do bolão",
+    50, min(1000, len(jogos)), 300
+)
+
+def parse_bolao(texto):
+    try:
+        nums = sorted(set(int(n) for n in texto.split(",") if n.strip().isdigit()))
+        if 16 <= len(nums) <= 20 and all(1 <= n <= 25 for n in nums):
+            return nums
+    except Exception:
+        pass
+    return None
+
+bolao = parse_bolao(bolao_input)
+
+if bolao:
+    st.success(f"Bolão válido com {len(bolao)} dezenas: {bolao}")
+
+    combinacoes = list(itertools.combinations(bolao, 15))
+
+    st.info(f"Total de combinações possíveis: {len(combinacoes)} jogos")
+
+    historico_ref = jogos[-qtd_sim_bolao:]
+
+    resultados = []
+    distribuicao = Counter()
+
+    for jogo in combinacoes:
+        acertos = [len(set(jogo) & set(s)) for s in historico_ref]
+        media = np.mean(acertos)
+        maximo = max(acertos)
+
+        distribuicao.update(acertos)
+
+        resultados.append({
+            "Jogo": list(jogo),
+            "Média de acertos": round(media, 2),
+            "Máx": maximo
+        })
+
+    df_bolao = pd.DataFrame(resultados)
+
+    st.subheader("📊 Resultado Estatístico do Bolão")
+    st.dataframe(df_bolao.sort_values("Média de acertos", ascending=False).head(10))
+
+    st.subheader("📈 Distribuição de Acertos")
+    dist_df = pd.DataFrame(
+        [{"Acertos": k, "Ocorrências": v} for k, v in sorted(distribuicao.items())]
+    )
+    st.dataframe(dist_df)
+
+    st.markdown(
+        f"""
+        **Diagnóstico do Bolão**
+        - Média geral: **{df_bolao['Média de acertos'].mean():.2f}**
+        - Máximo histórico observado: **{df_bolao['Máx'].max()}**
+        """
+    )
+
+else:
+    if bolao_input:
+        st.error("Bolão inválido. Informe entre 16 e 20 números válidos (1–25).")
+
+# ======================================================
+# 🧠 MATRIZ DE COBERTURA (OTIMIZAÇÃO DO BOLÃO)
+# ======================================================
+st.divider()
+st.header("🧠 Otimização por Matriz de Cobertura")
+
+if bolao:
+    qtd_jogos_otimizados = st.slider(
+        "Quantidade de jogos otimizados",
+        5, min(50, len(combinacoes)), 15
+    )
+
+    def score_cobertura(jogo, numeros_cobertos, pares_cobertos):
+        score = 0
+        for n in jogo:
+            if n not in numeros_cobertos:
+                score += 2
+        for p in itertools.combinations(jogo, 2):
+            if p not in pares_cobertos:
+                score += 1
+        return score
+
+    jogos_restantes = combinacoes.copy()
+    numeros_cobertos = set()
+    pares_cobertos = set()
+    selecionados = []
+
+    while len(selecionados) < qtd_jogos_otimizados and jogos_restantes:
+        melhor_jogo = max(
+            jogos_restantes,
+            key=lambda j: score_cobertura(j, numeros_cobertos, pares_cobertos)
+        )
+
+        selecionados.append(melhor_jogo)
+
+        numeros_cobertos.update(melhor_jogo)
+        pares_cobertos.update(itertools.combinations(melhor_jogo, 2))
+
+        jogos_restantes.remove(melhor_jogo)
+
+    st.subheader("🎯 Jogos Otimizados (Matriz de Cobertura)")
+    for i, j in enumerate(selecionados, 1):
+        st.write(f"Jogo {i}: {list(j)}")
+
+    st.markdown(
+        f"""
+        **Cobertura alcançada**
+        - Números cobertos: **{len(numeros_cobertos)} / {len(bolao)}**
+        - Pares cobertos: **{len(pares_cobertos)}**
+        """
+    )
+
+    # Exportação
+    df_export_bolao = pd.DataFrame(
+        {"Jogo": [list(j) for j in selecionados]}
+    )
+
+    csv_bolao = df_export_bolao.to_csv(index=False).encode("utf-8")
+
+    st.download_button(
+        "⬇️ Baixar jogos otimizados do bolão (CSV)",
+        data=csv_bolao,
+        file_name="bolao_otimizado_lotofacil.csv",
+        mime="text/csv"
+    )
