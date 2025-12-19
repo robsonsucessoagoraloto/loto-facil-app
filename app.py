@@ -18,18 +18,12 @@ st.caption("Probabilidade empírica • filtros inteligentes • decisão assist
 # ======================================================
 # BASE ONLINE (CSV AUTOMÁTICO – GITHUB RAW)
 # ======================================================
-# ✅ URL CORRETA
-# Repositório: robsonsucessoagoraloto/aplicativo-loto-facil
-# Arquivo: lotofacil_resultados.csv
-# Branch: main
+# 🔹 Repositório: robsonsucessoagoraloto/aplicativo-loto-facil
+# 🔹 Arquivo: lotofacil_resultados.csv
+# 🔹 Branch: main
+# 🔹 OBS: se a base cair, o sistema usa CSV manual sem erro visual
 
-URL_BASE_ONLINE = (
-    "https://raw.githubusercontent.com/"
-    "robsonsucessoagoraloto/"
-    "aplicativo-loto-facil/"
-    "main/"
-    "lotofacil_resultados.csv"
-)
+URL_BASE_ONLINE = "https://raw.githubusercontent.com/robsonsucessoagoraloto/aplicativo-loto-facil/main/lotofacil_resultados.csv"
 
 @st.cache_data(show_spinner=False)
 def carregar_base_online():
@@ -37,8 +31,7 @@ def carregar_base_online():
         df = pd.read_csv(URL_BASE_ONLINE)
         df.columns = [c.lower() for c in df.columns]
         return df
-    except Exception as e:
-        st.error(f"Erro ao carregar base online: {e}")
+    except Exception:
         return None
 
 # ======================================================
@@ -119,10 +112,11 @@ df = carregar_base_online()
 if df is not None:
     st.success(f"Base online carregada ({len(df)} concursos)")
 else:
-    st.warning("Base online indisponível. Envie um CSV manualmente.")
+    st.info("Base online indisponível no momento. Envie um CSV manualmente.")
     arquivo = st.file_uploader("Upload CSV", type=["csv"])
     if arquivo:
         df = pd.read_csv(arquivo)
+        df.columns = [c.lower() for c in df.columns]
 
 if df is None:
     st.stop()
@@ -164,7 +158,7 @@ st.divider()
 st.subheader("🎯 Geração estratégica")
 
 if len(base) < 15:
-    st.error("Base insuficiente. Aumente quentes/frios.")
+    st.warning("Base insuficiente. Ajuste quentes/frios.")
     st.stop()
 
 jogos_gerados = gerar_jogos(
